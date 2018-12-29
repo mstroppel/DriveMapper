@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -43,6 +44,9 @@ namespace FL.DriveMapper
         /// <returns>The <see cref="Guid"/> in the registry path that was created for this drive mapping.</returns>
         public bool MapDrive()
         {
+            if (!Ping())
+                return false;
+
             var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2");
             var subKeyAtBeginning = key.GetSubKeyNames();
 
@@ -63,6 +67,39 @@ namespace FL.DriveMapper
             }
 
             return true;
+        }
+
+        private bool Ping()
+        {
+            if (!_info.NetworkPath.StartsWith(@"\\"))
+            {
+                _logSink.Info($"Pinge host {_info.NetworkPath} nicht an, da es kein Netzwerkpfad ist.");
+                return true;
+            }
+
+            var hostname = _info.NetworkPath.Substring(2);
+            var indexOfNextBackslash = hostname.IndexOf('\\');
+            if (indexOfNextBackslash != 0)
+                hostname = hostname.Substring(0, indexOfNextBackslash);
+
+            var ping = new Ping();
+            for (var i = 0; i < 1000; i++)
+            {
+                _logSink.Warn($"Ping den host '{hostname}' an...");
+
+                var reply = ping.Send(hostname);
+                if (reply.Status == IPStatus.Success)
+                {
+                    _logSink.Info("Ping erfolgreich :-)");
+                    return true;
+                }
+
+                _logSink.Warn($"Ping an host '{hostname}' schlug fehl: {reply.Status}");
+                Thread.Sleep(250);
+            }
+
+            _logSink.Error("Ping schlug fehl. Mapping wird nicht durchgeführt!");
+            return false;
         }
 
         private static void LogKeys(string message, string[] subKeyAtBeginning)
