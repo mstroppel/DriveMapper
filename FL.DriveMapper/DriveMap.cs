@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace FL.DriveMapper
 {
@@ -45,6 +46,8 @@ namespace FL.DriveMapper
             var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2");
             var subKeyAtBeginning = key.GetSubKeyNames();
 
+            LogKeys("zu Beginn", subKeyAtBeginning);
+
             if (!RunSubst())
                 return false;
 
@@ -60,6 +63,18 @@ namespace FL.DriveMapper
             }
 
             return true;
+        }
+
+        private static void LogKeys(string message, string[] subKeyAtBeginning)
+        {
+            _logSink.Info("Anzahl Schlüssel " + message + ": " + subKeyAtBeginning.Length);
+            if (_logSink.IsDebugEnabled)
+            {
+                foreach (var key in subKeyAtBeginning)
+                {
+                    _logSink.Debug("  " + key);
+                }
+            }
         }
 
         /// <summary>
@@ -106,18 +121,22 @@ namespace FL.DriveMapper
             var expectedLenght = existingKeys.Length + 2;
             while (subKeysAfterDone.Length < expectedLenght)
             {
-                Thread.Sleep(1000);
+                Task.Delay(500).Wait();
                 key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2");
                 subKeysAfterDone = key.GetSubKeyNames().Distinct().ToArray();
                 ++breakCount;
                 if (breakCount > 10)
                 {
-                    _logSink.Warn("Fehler beim setzen des Labels von " + _info + "! Es wurde kein registry Eintrag erstellt!");
-                    return Enumerable.Empty<string>();
+                    break;
                 }
             }
             var created = subKeysAfterDone.Except(existingKeys).ToArray();
-            _logSink.Info("Folgende Schlüssel wurden erstellt: " + string.Join(", ", created));
+
+            if (created.Length == 0)
+                _logSink.Warn("Fehler beim setzen des Labels von " + _info + "! Es wurde kein registry Eintrag erstellt!");
+            else
+                _logSink.Info("Folgende Schlüssel wurden erstellt: " + string.Join(", ", created));
+
             return created;
         }
     }
