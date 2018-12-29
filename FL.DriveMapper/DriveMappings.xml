@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<DriveMappings>
+  <Mappings>
+    <DriveMapInfo>
+      <Drive>L:</Drive>
+      <NetworkPath>\\sepp\projekte</NetworkPath>
+      <Label>Projekte Lightroom</Label>
+    </DriveMapInfo>
+  </Mappings>
+</DriveMappings>
