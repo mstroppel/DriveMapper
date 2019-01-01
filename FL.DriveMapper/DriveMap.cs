@@ -85,23 +85,16 @@ namespace FL.DriveMapper
             var ping = new Ping();
             for (var i = 0; i < 1000; i++)
             {
-                _logSink.Warn($"Ping den host '{hostname}' an...");
-
-                var reply = ping.Send(hostname);
-                if (reply.Status == IPStatus.Success)
-                {
-                    _logSink.Info("Ping erfolgreich :-)");
+                if (TryPing(hostname, ping))
                     return true;
-                }
 
-                _logSink.Warn($"Ping an host '{hostname}' schlug fehl: {reply.Status}");
                 Thread.Sleep(250);
             }
 
             _logSink.Error("Ping schlug fehl. Mapping wird nicht durchgeführt!");
             return false;
         }
-
+        
         private static void LogKeys(string message, string[] subKeyAtBeginning)
         {
             _logSink.Info("Anzahl Schlüssel " + message + ": " + subKeyAtBeginning.Length);
@@ -112,6 +105,28 @@ namespace FL.DriveMapper
                     _logSink.Debug("  " + key);
                 }
             }
+        }
+
+        private bool TryPing(string hostname, Ping ping)
+        {
+            try
+            {
+                _logSink.Warn($"Ping den host '{hostname}' an...");
+
+                var reply = ping.Send(hostname);
+                if (reply.Status == IPStatus.Success)
+                {
+                    _logSink.Info("Ping erfolgreich :-)");
+                    return true;
+                }
+                _logSink.Warn($"Ping an host '{hostname}' schlug fehl: {reply.Status}");
+            }
+            catch (PingException e)
+            {
+                _logSink.Warn("Exception while pinging.", e);
+            }
+
+            return false;
         }
 
         /// <summary>
