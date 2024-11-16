@@ -51,7 +51,7 @@
         /// </returns>
         public override string ToString()
         {
-            return typeof(DriveMapInfo).Name + ": Drive=" + Drive + " NetworkPath= " + NetworkPath + " Label=" + Label;
+            return nameof(DriveMapInfo) + ": Drive=" + Drive + " NetworkPath= " + NetworkPath + " Label=" + Label;
         }
     }
 }

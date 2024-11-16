@@ -1,12 +1,8 @@
 ﻿using log4net;
 using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.NetworkInformation;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace FL.DriveMapper
 {
@@ -14,10 +10,11 @@ namespace FL.DriveMapper
     /// Implements the functionality to map a drive using the <c>subst</c> command
     /// and set the label.
     /// </summary>
+    [SuppressMessage("Interoperability", "CA1416:Validate platform compatibility")]
     public class DriveMap
     {
-        private static readonly ILog _logSink = LogManager.GetLogger(typeof(DriveMap));
-        private DriveMapInfo _info;
+        private static readonly ILog LogSink = LogManager.GetLogger(typeof(DriveMap));
+        private readonly DriveMapInfo _info;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DriveMap"/> class.
@@ -26,16 +23,6 @@ namespace FL.DriveMapper
         public DriveMap(DriveMapInfo info)
         {
             _info = info;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="DriveMap"/> class.
-        /// </summary>
-        /// <param name="drive">The drive, e.g. "P:"</param>
-        /// <param name="networkPath">The network path, e.g. "\\\\sepp\\projekte".</param>
-        /// <param name="label">The label, e.g. "Projekte".</param>
-        public DriveMap(string drive, string networkPath, string label)
-        {
         }
 
         /// <summary>
@@ -48,7 +35,7 @@ namespace FL.DriveMapper
                 return false;
 
             var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2");
-            var subKeyAtBeginning = key.GetSubKeyNames();
+            var subKeyAtBeginning = key?.GetSubKeyNames();
 
             LogKeys("zu Beginn", subKeyAtBeginning);
 
@@ -62,7 +49,7 @@ namespace FL.DriveMapper
             foreach (var createdKey in createdKeys)
             {
                 // Set the label.
-                _logSink.Info("Registry Schlüssel: " + createdKey + " wurde erstellt. Setze das Label...");
+                LogSink.Info("Registry Schlüssel: " + createdKey + " wurde erstellt. Setze das Label...");
                 Registry.SetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2\" + createdKey, "_LabelFromReg", _info.Label, RegistryValueKind.String);
             }
 
@@ -73,7 +60,7 @@ namespace FL.DriveMapper
         {
             if (!_info.NetworkPath.StartsWith(@"\\"))
             {
-                _logSink.Info($"Pinge host {_info.NetworkPath} nicht an, da es kein Netzwerkpfad ist.");
+                LogSink.Info($"Pinge host {_info.NetworkPath} nicht an, da es kein Netzwerkpfad ist.");
                 return true;
             }
 
@@ -91,18 +78,18 @@ namespace FL.DriveMapper
                 Thread.Sleep(250);
             }
 
-            _logSink.Error("Ping schlug fehl. Mapping wird nicht durchgeführt!");
+            LogSink.Error("Ping schlug fehl. Mapping wird nicht durchgeführt!");
             return false;
         }
         
         private static void LogKeys(string message, string[] subKeyAtBeginning)
         {
-            _logSink.Info("Anzahl Schlüssel " + message + ": " + subKeyAtBeginning.Length);
-            if (_logSink.IsDebugEnabled)
+            LogSink.Info("Anzahl Schlüssel " + message + ": " + subKeyAtBeginning.Length);
+            if (LogSink.IsDebugEnabled)
             {
                 foreach (var key in subKeyAtBeginning)
                 {
-                    _logSink.Debug("  " + key);
+                    LogSink.Debug("  " + key);
                 }
             }
         }
@@ -111,19 +98,19 @@ namespace FL.DriveMapper
         {
             try
             {
-                _logSink.Warn($"Ping den host '{hostname}' an...");
+                LogSink.Warn($"Ping den host '{hostname}' an...");
 
                 var reply = ping.Send(hostname);
-                if (reply.Status == IPStatus.Success)
+                if (reply?.Status == IPStatus.Success)
                 {
-                    _logSink.Info("Ping erfolgreich :-)");
+                    LogSink.Info("Ping erfolgreich :-)");
                     return true;
                 }
-                _logSink.Warn($"Ping an host '{hostname}' schlug fehl: {reply.Status}");
+                LogSink.Warn($"Ping an host '{hostname}' schlug fehl: {reply?.Status}");
             }
             catch (PingException e)
             {
-                _logSink.Warn("Exception while pinging.", e);
+                LogSink.Warn("Exception while pinging.", e);
             }
 
             return false;
@@ -148,13 +135,13 @@ namespace FL.DriveMapper
 
                 if (process.ExitCode != 0)
                 {
-                    _logSink.Error("Fehler beim Ausführuen von subst.exe. Existiert das Laufwer schon? ExitCode = " + process.ExitCode);
+                    LogSink.Error("Fehler beim Ausführuen von subst.exe. Existiert das Laufwer schon? ExitCode = " + process.ExitCode);
                     return false;
                 }
             }
             catch (Exception e)
             {
-                _logSink.Error("Fehler beim Starten von subst.exe", e);
+                LogSink.Error("Fehler beim Starten von subst.exe", e);
                 return false;
             }
             return true;
@@ -168,26 +155,26 @@ namespace FL.DriveMapper
         private IEnumerable<string> WaitForCreatedRegistryKeys(string[] existingKeys)
         {
             var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2");
-            var subKeysAfterDone = key.GetSubKeyNames().Distinct().ToArray();
+            var subKeysAfterDone = key?.GetSubKeyNames().Distinct().ToArray();
             var breakCount = 0;
             var expectedLenght = existingKeys.Length + 2;
-            while (subKeysAfterDone.Length < expectedLenght)
+            while (subKeysAfterDone?.Length < expectedLenght)
             {
                 Task.Delay(500).Wait();
                 key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\MountPoints2");
-                subKeysAfterDone = key.GetSubKeyNames().Distinct().ToArray();
+                subKeysAfterDone = key?.GetSubKeyNames().Distinct().ToArray();
                 ++breakCount;
                 if (breakCount > 10)
                 {
                     break;
                 }
             }
-            var created = subKeysAfterDone.Except(existingKeys).ToArray();
+            var created = subKeysAfterDone?.Except(existingKeys).ToArray();
 
-            if (created.Length == 0)
-                _logSink.Warn("Fehler beim setzen des Labels von " + _info + "! Es wurde kein registry Eintrag erstellt!");
+            if (created?.Length == 0)
+                LogSink.Warn("Fehler beim setzen des Labels von " + _info + "! Es wurde kein registry Eintrag erstellt!");
             else
-                _logSink.Info("Folgende Schlüssel wurden erstellt: " + string.Join(", ", created));
+                LogSink.Info("Folgende Schlüssel wurden erstellt: " + string.Join(", ", created ?? []));
 
             return created;
         }
